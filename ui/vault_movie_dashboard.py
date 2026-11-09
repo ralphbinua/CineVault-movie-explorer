@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from ui.movie_card import MovieCard
-from ui.player_widget import PlayerWidget
+from ui.movie_player import MoviePlayer
 
 # Dummy data for Step 4 UI only (DB comes later)
 DUMMY_MOVIES = [
@@ -63,7 +63,7 @@ class VaultMovieDashboard(QMainWindow):
         root.addLayout(top)
 
         # Trailer player (Step 5) — hidden until Play is clicked
-        self.player = PlayerWidget()
+        self.player = MoviePlayer()
         root.addWidget(self.player)
 
         # Scrollable grid

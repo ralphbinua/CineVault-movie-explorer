@@ -1,4 +1,4 @@
-"""Trailer player — embedded QMediaPlayer, plays in UI (no redirect)."""
+"""Movie player — embedded QMediaPlayer, plays trailers in UI (no redirect)."""
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSlider, QLabel, QMessageBox
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
@@ -22,7 +22,7 @@ TRAILER_URLS = {
 DEFAULT_URL = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
 
 
-class PlayerWidget(QWidget):
+class MoviePlayer(QWidget):
     """Player panel above the grid. Hidden until a trailer is played."""
 
     def __init__(self, parent=None):
