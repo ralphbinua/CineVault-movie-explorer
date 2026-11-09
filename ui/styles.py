@@ -6,6 +6,10 @@ QLabel { color: #e4e4e7; }
 QLineEdit { background: #1c1c24; border: 1px solid #2d2d3a; border-radius: 6px; padding: 8px; color: #fff; }
 QLineEdit:focus { border: 1px solid #e50914; }
 QComboBox { background: #1c1c24; border: 1px solid #2d2d3a; border-radius: 6px; padding: 6px 8px; color: #fff; }
+QComboBox::drop-down { width: 24px; }
+QComboBox::down-arrow { image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid #fff; width: 0; height: 0; margin-right: 8px; }
+QComboBox QAbstractItemView { background: #1c1c24; color: #fff; border: 1px solid #2d2d3a; selection-background-color: #e50914; selection-color: #fff; outline: none; }
+QComboBox QAbstractItemView::item { padding: 6px 10px; min-height: 24px; }
 QPushButton { background: #e50914; color: white; border: none; border-radius: 6px; padding: 10px; font-weight: bold; }
 QPushButton:hover { background: #f6121d; }
 QPushButton.secondary { background: #26262f; border: 1px solid #3a3a48; }
