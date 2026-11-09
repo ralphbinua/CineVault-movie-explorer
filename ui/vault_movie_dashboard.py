@@ -1,10 +1,11 @@
 """Movie dashboard — search + genre filter + scrollable card grid (UI only)."""
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QComboBox, QLabel, QScrollArea, QGridLayout, QMessageBox
+    QLineEdit, QComboBox, QLabel, QScrollArea, QGridLayout
 )
 from PyQt6.QtCore import Qt
 from ui.movie_card import MovieCard
+from ui.player_widget import PlayerWidget
 
 # Dummy data for Step 4 UI only (DB comes later)
 DUMMY_MOVIES = [
@@ -61,6 +62,10 @@ class VaultMovieDashboard(QMainWindow):
         top.addWidget(user_lbl)
         root.addLayout(top)
 
+        # Trailer player (Step 5) — hidden until Play is clicked
+        self.player = PlayerWidget()
+        root.addWidget(self.player)
+
         # Scrollable grid
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -94,7 +99,7 @@ class VaultMovieDashboard(QMainWindow):
             self.grid.addWidget(card, i // 4, i % 4)
 
     def _on_play(self, movie):
-        QMessageBox.information(self, "Trailer", f"▶ {movie['title']}\n\nPlayer UI comes in Step 5.")
+        self.player.play_movie(movie)
 
     def _on_fav(self, movie):
         title = movie["title"]
