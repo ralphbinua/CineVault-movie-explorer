@@ -18,4 +18,7 @@ QScrollArea { background: transparent; border: none; }
 QFrame { background: #1a1a22; border: 1px solid #2a2a36; border-radius: 10px; }
 QSlider::groove:horizontal { height: 6px; background: #2d2d3a; border-radius: 3px; }
 QSlider::handle:horizontal { background: #e50914; width: 14px; height: 14px; border-radius: 7px; margin: -4px 0; }
+QTabWidget::pane { border: 1px solid #2d2d3a; background: #0f0f14; }
+QTabBar::tab { background: #1c1c24; color: #a1a1aa; padding: 8px 18px; border: 1px solid #2d2d3a; }
+QTabBar::tab:selected { background: #e50914; color: white; }
 """

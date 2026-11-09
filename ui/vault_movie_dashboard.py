@@ -1,7 +1,8 @@
-"""Movie dashboard — search + genre filter + scrollable card grid (UI only)."""
+"""Movie dashboard — search + tabs (Browse / Favorites / History), UI only."""
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QComboBox, QLabel, QScrollArea, QGridLayout
+    QLineEdit, QComboBox, QLabel, QScrollArea, QGridLayout,
+    QTabWidget, QPushButton, QMessageBox
 )
 from PyQt6.QtCore import Qt
 from ui.movie_card import MovieCard
@@ -28,11 +29,13 @@ class VaultMovieDashboard(QMainWindow):
     def __init__(self, username):
         super().__init__()
         self.username = username
-        self.favorites: set[str] = set()  # UI-only favorites
+        self.favorites: set[str] = set()  # UI-only
+        self.history: list[dict] = []  # UI-only, newest first
+        self.logged_out = False
         self.setWindowTitle(f"CineVault — Welcome, {username}")
         self.resize(1180, 780)
         self._build()
-        self._refresh_grid()
+        self._refresh_all()
 
     def _build(self):
         central = QWidget()
@@ -48,58 +51,106 @@ class VaultMovieDashboard(QMainWindow):
 
         self.search = QLineEdit()
         self.search.setPlaceholderText("🔍  Search titles or descriptions…")
-        self.search.textChanged.connect(self._refresh_grid)
+        self.search.textChanged.connect(self._refresh_browse)
         top.addWidget(self.search, 1)
 
         genres = ["All"] + sorted({m["genre"] for m in DUMMY_MOVIES})
         self.genre_box = QComboBox()
         self.genre_box.addItems(genres)
-        self.genre_box.currentTextChanged.connect(self._refresh_grid)
+        self.genre_box.currentTextChanged.connect(self._refresh_browse)
         top.addWidget(self.genre_box)
 
         user_lbl = QLabel(f"👤 {self.username}")
         user_lbl.setStyleSheet("color: #a1a1aa; font-weight: bold; padding: 0 8px;")
         top.addWidget(user_lbl)
+
+        logout_btn = QPushButton("Log Out")
+        logout_btn.setStyleSheet("background: #26262f; border: 1px solid #3a3a48; padding: 8px 14px;")
+        logout_btn.clicked.connect(self._on_logout)
+        top.addWidget(logout_btn)
         root.addLayout(top)
 
-        # Trailer player (Step 5) — hidden until Play is clicked
+        # Player — hidden until Play is clicked
         self.player = MoviePlayer()
         root.addWidget(self.player)
 
-        # Scrollable grid
-        self.scroll = QScrollArea()
-        self.scroll.setWidgetResizable(True)
-        self.holder = QWidget()
-        self.scroll.setWidget(self.holder)
-        self.grid = QGridLayout(self.holder)
-        self.grid.setSpacing(12)
-        self.grid.setContentsMargins(8, 8, 8, 8)
-        root.addWidget(self.scroll, 1)
+        # Tabs: Browse / Favorites / History
+        self.tabs = QTabWidget()
+        root.addWidget(self.tabs, 1)
+        self.browse_tab = self._make_tab()
+        self.fav_tab = self._make_tab()
+        self.hist_tab = self._make_tab()
+        self.tabs.addTab(self.browse_tab[0], "🎬 Browse")
+        self.tabs.addTab(self.fav_tab[0], "♥ Favorites")
+        self.tabs.addTab(self.hist_tab[0], "🕘 History")
 
-    def _filtered(self):
+    def _make_tab(self):
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        holder = QWidget()
+        scroll.setWidget(holder)
+        grid = QGridLayout(holder)
+        grid.setSpacing(12)
+        grid.setContentsMargins(8, 8, 8, 8)
+        return (scroll, grid)
+
+    # --- Filtering & rendering ---
+    def _filtered_browse(self):
         q = self.search.text().strip().lower()
         genre = self.genre_box.currentText()
         return [m for m in DUMMY_MOVIES
                 if (genre == "All" or m["genre"] == genre)
                 and (not q or q in m["title"].lower() or q in m["desc"].lower())]
 
-    def _refresh_grid(self):
-        while self.grid.count():
-            item = self.grid.takeAt(0)
+    def _clear_grid(self, grid):
+        while grid.count():
+            item = grid.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        movies = self._filtered()
-        if not movies:
-            self.grid.addWidget(QLabel("No movies match your search."), 0, 0)
-            return
+
+    def _fill_grid(self, grid, movies):
         for i, movie in enumerate(movies):
             card = MovieCard(movie, is_fav=movie["title"] in self.favorites)
             card.play_btn.clicked.connect(lambda _, m=movie: self._on_play(m))
             card.fav_btn.clicked.connect(lambda _, m=movie: self._on_fav(m))
-            self.grid.addWidget(card, i // 4, i % 4)
+            grid.addWidget(card, i // 4, i % 4)
 
+    def _refresh_browse(self):
+        _, grid = self.browse_tab
+        self._clear_grid(grid)
+        movies = self._filtered_browse()
+        if not movies:
+            grid.addWidget(QLabel("No movies match your search."), 0, 0)
+        else:
+            self._fill_grid(grid, movies)
+
+    def _refresh_favorites(self):
+        _, grid = self.fav_tab
+        self._clear_grid(grid)
+        movies = [m for m in DUMMY_MOVIES if m["title"] in self.favorites]
+        if not movies:
+            grid.addWidget(QLabel("No favorites yet — tap ♡ on a card to save it."), 0, 0)
+        else:
+            self._fill_grid(grid, movies)
+
+    def _refresh_history(self):
+        _, grid = self.hist_tab
+        self._clear_grid(grid)
+        if not self.history:
+            grid.addWidget(QLabel("Nothing watched yet — play a trailer to start your history."), 0, 0)
+        else:
+            self._fill_grid(grid, self.history)
+
+    def _refresh_all(self):
+        self._refresh_browse()
+        self._refresh_favorites()
+        self._refresh_history()
+
+    # --- Actions ---
     def _on_play(self, movie):
         self.player.play_movie(movie)
+        self.history = [movie] + [m for m in self.history if m["title"] != movie["title"]]
+        self._refresh_history()
 
     def _on_fav(self, movie):
         title = movie["title"]
@@ -107,4 +158,10 @@ class VaultMovieDashboard(QMainWindow):
             self.favorites.remove(title)
         else:
             self.favorites.add(title)
-        self._refresh_grid()
+        self._refresh_all()
+
+    def _on_logout(self):
+        reply = QMessageBox.question(self, "Log out", "Log out of CineVault?")
+        if reply == QMessageBox.StandardButton.Yes:
+            self.logged_out = True
+            self.close()
