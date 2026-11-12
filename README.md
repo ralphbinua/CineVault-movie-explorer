@@ -1,6 +1,6 @@
 # HOW TO RUN THE SYSTEM
 
-### 1. Clone the Repo
+### 1. Clone the Repository
 ```
 git clone https://github.com/ralphbinua/CineVault-movie-explorer.git
 ```
