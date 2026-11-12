@@ -1,0 +1,43 @@
+"""Seed catalog — 12 movies with embedded trailer MP4s."""
+from backend.models import Movie
+
+GTV = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample"
+
+SEED_MOVIES: list[Movie] = [
+    Movie(id=1, title="Big Buck Bunny", genre="Animation", year=2008, rating=8.3, duration="9m",
+          description="A giant rabbit takes revenge on three bullying rodents in a forest farce.",
+          poster_url="", trailer_url=f"{GTV}/BigBuckBunny.mp4", poster_color="#2ea44f"),
+    Movie(id=2, title="Sintel", genre="Fantasy", year=2010, rating=8.4, duration="15m",
+          description="A lonely young woman searches for her lost dragon friend across deserts and mountains.",
+          poster_url="", trailer_url=f"{GTV}/Sintel.mp4", poster_color="#7c3aed"),
+    Movie(id=3, title="Tears of Steel", genre="Sci-Fi", year=2012, rating=7.8, duration="12m",
+          description="Amsterdam, 2052: a group of scientists re-enacts a past event to save the world from robots.",
+          poster_url="", trailer_url=f"{GTV}/TearsOfSteel.mp4", poster_color="#0ea5e9"),
+    Movie(id=4, title="Elephants Dream", genre="Animation", year=2006, rating=7.5, duration="11m",
+          description="Two travelers explore the endless Machina machine and argue about reality itself.",
+          poster_url="", trailer_url=f"{GTV}/ElephantsDream.mp4", poster_color="#f59e0b"),
+    Movie(id=5, title="For Bigger Blazes", genre="Action", year=2014, rating=7.1, duration="15s",
+          description="Chromecast mini trailer — explosions, stunts, and big screen energy.",
+          poster_url="", trailer_url=f"{GTV}/ForBiggerBlazes.mp4", poster_color="#ef4444"),
+    Movie(id=6, title="For Bigger Escapes", genre="Adventure", year=2014, rating=7.2, duration="15s",
+          description="A jailbreak thriller teaser. Break free to the big screen.",
+          poster_url="", trailer_url=f"{GTV}/ForBiggerEscapes.mp4", poster_color="#06b6d4"),
+    Movie(id=7, title="For Bigger Fun", genre="Comedy", year=2014, rating=7.0, duration="1m",
+          description="Party comedy teaser — for bigger fun, cast it to the TV.",
+          poster_url="", trailer_url=f"{GTV}/ForBiggerFun.mp4", poster_color="#ec4899"),
+    Movie(id=8, title="For Bigger Joyrides", genre="Action", year=2014, rating=7.4, duration="15s",
+          description="Car chase joyride teaser with high-octane stunts.",
+          poster_url="", trailer_url=f"{GTV}/ForBiggerJoyrides.mp4", poster_color="#f97316"),
+    Movie(id=9, title="For Bigger Meltdowns", genre="Drama", year=2014, rating=7.3, duration="15s",
+          description="Family drama teaser — for bigger meltdowns.",
+          poster_url="", trailer_url=f"{GTV}/ForBiggerMeltdowns.mp4", poster_color="#8b5cf6"),
+    Movie(id=10, title="Subaru: Street & Dirt", genre="Documentary", year=2015, rating=7.6, duration="9m",
+          description="Off-road adventure filmed on streets and dirt trails.",
+          poster_url="", trailer_url=f"{GTV}/SubaruOutbackOnStreetAndDirt.mp4", poster_color="#10b981"),
+    Movie(id=11, title="Blender Vault", genre="Animation", year=2023, rating=8.0, duration="10m",
+          description="A behind-the-scenes vault of Blender shorts and animation magic.",
+          poster_url="", trailer_url=f"{GTV}/BigBuckBunny.mp4", poster_color="#6366f1"),
+    Movie(id=12, title="Neon Horizon", genre="Sci-Fi", year=2024, rating=8.8, duration="2h 01m",
+          description="Cyberpunk traders chase a signal from the edge of the Neon Horizon.",
+          poster_url="", trailer_url=f"{GTV}/Sintel.mp4", poster_color="#14b8a6"),
+]
