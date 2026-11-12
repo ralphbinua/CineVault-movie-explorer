@@ -3,30 +3,13 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSli
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtCore import QUrl, Qt
-
-# Dummy trailer MP4s for Step 5 UI only
-TRAILER_URLS = {
-    "Big Buck Bunny": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    "Sintel": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-    "Tears of Steel": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-    "Elephants Dream": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    "For Bigger Blazes": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    "For Bigger Escapes": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    "For Bigger Fun": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-    "For Bigger Joyrides": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-    "Neon Horizon": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-    "Blender Vault": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    "Subaru: Street & Dirt": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
-    "For Bigger Meltdowns": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-}
-DEFAULT_URL = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+from backend.services.playback_service import PlaybackService
 
 
 class MoviePlayer(QWidget):
-    """Player panel above the grid. Hidden until a trailer is played."""
-
-    def __init__(self, parent=None):
+    def __init__(self, playback: PlaybackService, parent=None):
         super().__init__(parent)
+        self.playback = playback
         self._build()
         self.audio_output = QAudioOutput(self)
         self.player = QMediaPlayer(self)
@@ -82,16 +65,16 @@ class MoviePlayer(QWidget):
         ctrl.addWidget(self.full_btn)
         lay.addLayout(ctrl)
 
-    # Public API — dashboard calls this
-    def play_movie(self, movie: dict):
+    def play_movie(self, movie: dict, tmdb_id: int | None = None):
         title = movie["title"]
-        self.title_label.setText(f"▶ Now Playing: {title} ({movie['year']}) — {movie['genre']}")
-        url = TRAILER_URLS.get(title, DEFAULT_URL)
+        year = movie.get("year", 0)
+        genre = movie.get("genre", "")
+        self.title_label.setText(f"▶ Now Playing: {title} ({year}) — {genre}")
+        url = self.playback.get_trailer_url(movie["id"], tmdb_id)
         self.player.setSource(QUrl(url))
         self.player.play()
         self.setVisible(True)
 
-    # Internals
     def _toggle_play(self):
         if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.player.pause()
