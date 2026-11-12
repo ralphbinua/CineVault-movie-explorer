@@ -1,4 +1,4 @@
-"""Movie dashboard — search + tabs (Browse / Favorites / History), UI only."""
+"""Movie dashboard — search + tabs (Browse / Favorites / History), backed by SQLite services."""
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QComboBox, QLabel, QScrollArea, QGridLayout,
@@ -7,30 +7,17 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from ui.movie_card import MovieCard
 from ui.movie_player import MoviePlayer
-
-# Dummy data for Step 4 UI only (DB comes later)
-DUMMY_MOVIES = [
-    {"title": "Big Buck Bunny", "genre": "Animation", "year": 2008, "rating": 8.3, "desc": "A giant rabbit takes revenge on three bullying rodents.", "color": "#2ea44f"},
-    {"title": "Sintel", "genre": "Fantasy", "year": 2010, "rating": 8.4, "desc": "A lonely girl searches for her lost dragon friend.", "color": "#7c3aed"},
-    {"title": "Tears of Steel", "genre": "Sci-Fi", "year": 2012, "rating": 7.8, "desc": "Scientists re-enact a past event to save the world from robots.", "color": "#0ea5e9"},
-    {"title": "Elephants Dream", "genre": "Animation", "year": 2006, "rating": 7.5, "desc": "Two travelers explore the endless Machina machine.", "color": "#f59e0b"},
-    {"title": "For Bigger Blazes", "genre": "Action", "year": 2014, "rating": 7.1, "desc": "Explosions, stunts, and big screen energy teaser.", "color": "#ef4444"},
-    {"title": "For Bigger Escapes", "genre": "Adventure", "year": 2014, "rating": 7.2, "desc": "A jailbreak thriller teaser.", "color": "#06b6d4"},
-    {"title": "For Bigger Fun", "genre": "Comedy", "year": 2014, "rating": 7.0, "desc": "Party comedy teaser for the big screen.", "color": "#ec4899"},
-    {"title": "For Bigger Joyrides", "genre": "Action", "year": 2014, "rating": 7.4, "desc": "Car chase joyride teaser with high-octane stunts.", "color": "#f97316"},
-    {"title": "Neon Horizon", "genre": "Sci-Fi", "year": 2024, "rating": 8.8, "desc": "Cyberpunk traders chase a signal from the edge of the Neon Horizon.", "color": "#14b8a6"},
-    {"title": "Blender Vault", "genre": "Animation", "year": 2023, "rating": 8.0, "desc": "Behind-the-scenes vault of Blender shorts and animation magic.", "color": "#6366f1"},
-    {"title": "Subaru: Street & Dirt", "genre": "Documentary", "year": 2015, "rating": 7.6, "desc": "Off-road adventure filmed on streets and dirt trails.", "color": "#10b981"},
-    {"title": "For Bigger Meltdowns", "genre": "Drama", "year": 2014, "rating": 7.3, "desc": "Family drama teaser.", "color": "#8b5cf6"},
-]
+from backend.services.catalog_service import CatalogService
+from backend.services.history_service import HistoryService
 
 
 class VaultMovieDashboard(QMainWindow):
-    def __init__(self, username):
+    def __init__(self, username: str, user_id: int, catalog: CatalogService, history: HistoryService):
         super().__init__()
         self.username = username
-        self.favorites: set[str] = set()  # UI-only
-        self.history: list[dict] = []  # UI-only, newest first
+        self.user_id = user_id
+        self.catalog = catalog
+        self.history_service = history
         self.logged_out = False
         self.setWindowTitle(f"CineVault — Welcome, {username}")
         self.resize(1180, 780)
@@ -54,7 +41,7 @@ class VaultMovieDashboard(QMainWindow):
         self.search.textChanged.connect(self._refresh_browse)
         top.addWidget(self.search, 1)
 
-        genres = ["All"] + sorted({m["genre"] for m in DUMMY_MOVIES})
+        genres = ["All"] + self.catalog.genres()
         self.genre_box = QComboBox()
         self.genre_box.addItems(genres)
         self.genre_box.currentTextChanged.connect(self._refresh_browse)
@@ -98,9 +85,8 @@ class VaultMovieDashboard(QMainWindow):
     def _filtered_browse(self):
         q = self.search.text().strip().lower()
         genre = self.genre_box.currentText()
-        return [m for m in DUMMY_MOVIES
-                if (genre == "All" or m["genre"] == genre)
-                and (not q or q in m["title"].lower() or q in m["desc"].lower())]
+        movies = self.catalog.search(q, genre)
+        return [m for m in movies if (not q or q in m.title.lower() or q in m.description.lower())]
 
     def _clear_grid(self, grid):
         while grid.count():
@@ -110,9 +96,10 @@ class VaultMovieDashboard(QMainWindow):
 
     def _fill_grid(self, grid, movies):
         for i, movie in enumerate(movies):
-            card = MovieCard(movie, is_fav=movie["title"] in self.favorites)
-            card.play_btn.clicked.connect(lambda _, m=movie: self._on_play(m))
-            card.fav_btn.clicked.connect(lambda _, m=movie: self._on_fav(m))
+            is_fav = self.history_service.is_favorite(self.user_id, movie.id)
+            card = MovieCard(movie.to_dict(), is_fav=is_fav)
+            card.play_btn.clicked.connect(lambda _, m=movie.to_dict(): self._on_play(m))
+            card.fav_btn.clicked.connect(lambda _, m=movie.to_dict(): self._on_fav(m))
             grid.addWidget(card, i // 4, i % 4)
 
     def _refresh_browse(self):
@@ -127,7 +114,7 @@ class VaultMovieDashboard(QMainWindow):
     def _refresh_favorites(self):
         _, grid = self.fav_tab
         self._clear_grid(grid)
-        movies = [m for m in DUMMY_MOVIES if m["title"] in self.favorites]
+        movies = self.history_service.get_favorites(self.user_id)
         if not movies:
             grid.addWidget(QLabel("No favorites yet — tap ♡ on a card to save it."), 0, 0)
         else:
@@ -136,10 +123,12 @@ class VaultMovieDashboard(QMainWindow):
     def _refresh_history(self):
         _, grid = self.hist_tab
         self._clear_grid(grid)
-        if not self.history:
+        records = self.history_service.get_history(self.user_id)
+        if not records:
             grid.addWidget(QLabel("Nothing watched yet — play a trailer to start your history."), 0, 0)
         else:
-            self._fill_grid(grid, self.history)
+            movies = [r.movie for r in records if r.movie]
+            self._fill_grid(grid, movies)
 
     def _refresh_all(self):
         self._refresh_browse()
@@ -147,17 +136,13 @@ class VaultMovieDashboard(QMainWindow):
         self._refresh_history()
 
     # --- Actions ---
-    def _on_play(self, movie):
+    def _on_play(self, movie: dict):
         self.player.play_movie(movie)
-        self.history = [movie] + [m for m in self.history if m["title"] != movie["title"]]
+        self.history_service.log_watch(self.user_id, movie["id"])
         self._refresh_history()
 
-    def _on_fav(self, movie):
-        title = movie["title"]
-        if title in self.favorites:
-            self.favorites.remove(title)
-        else:
-            self.favorites.add(title)
+    def _on_fav(self, movie: dict):
+        self.history_service.toggle_favorite(self.user_id, movie["id"])
         self._refresh_all()
 
     def _on_logout(self):
