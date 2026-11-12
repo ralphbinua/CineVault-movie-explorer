@@ -29,3 +29,9 @@ python.exe -m pip install --upgrade pip
 ```
 python main.py
 ```
+
+## HOW TO LOGIN
+```
+enter username: guest
+enter password: guest123
+```
