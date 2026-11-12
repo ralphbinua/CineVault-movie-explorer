@@ -56,6 +56,7 @@ class Database:
         self.conn.commit()
 
     def seed_demo(self):
+        # Demo guest account
         exists = self.conn.execute(
             "SELECT id FROM users WHERE username=?", ("guest",)
         ).fetchone()
@@ -66,12 +67,14 @@ class Database:
                 "INSERT INTO users (username, password_hash, salt, created_at) VALUES (?,?,?,?)",
                 ("guest", pw_hash, salt, datetime.now().isoformat()),
             )
-        count = self.conn.execute("SELECT COUNT(*) FROM movies").fetchone()[0]
-        if count == 0:
-            self.conn.executemany(
-                "INSERT OR REPLACE INTO movies (id,title,genre,year,rating,duration,description,poster_url,trailer_url,poster_color) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                [(m.id, m.title, m.genre, m.year, m.rating, m.duration, m.description, m.poster_url, m.trailer_url, m.poster_color) for m in SEED_MOVIES],
-            )
+        # Ensure all seed movies exist (insert missing ones)
+        for m in SEED_MOVIES:
+            existing = self.conn.execute("SELECT id FROM movies WHERE id=?", (m.id,)).fetchone()
+            if not existing:
+                self.conn.execute(
+                    "INSERT OR REPLACE INTO movies (id,title,genre,year,rating,duration,description,poster_url,trailer_url,poster_color) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (m.id, m.title, m.genre, m.year, m.rating, m.duration, m.description, m.poster_url, m.trailer_url, m.poster_color),
+                )
         self.conn.commit()
 
     def create_user(self, username: str, password_hash: str, salt: str) -> User:
@@ -128,6 +131,11 @@ class Database:
         return [r[0] for r in rows]
 
     def log_watch(self, user_id: int, movie_id: int):
+        # Only log watch for movies that exist in SQLite (FK constraint).
+        # TMDB-only movies don't have SQLite rows, so skip watch logging for them.
+        exists = self.conn.execute("SELECT 1 FROM movies WHERE id=?", (movie_id,)).fetchone()
+        if not exists:
+            return
         self.conn.execute(
             "INSERT INTO watch_history (user_id,movie_id,watched_at) VALUES (?,?,?)",
             (user_id, movie_id, datetime.now().isoformat()),
@@ -155,6 +163,10 @@ class Database:
         return row is not None
 
     def toggle_favorite(self, user_id: int, movie_id: int) -> bool:
+        # Only toggle favorite for movies that exist in SQLite (FK constraint).
+        exists = self.conn.execute("SELECT 1 FROM movies WHERE id=?", (movie_id,)).fetchone()
+        if not exists:
+            return False
         if self.is_favorite(user_id, movie_id):
             self.conn.execute(
                 "DELETE FROM favorites WHERE user_id=? AND movie_id=?", (user_id, movie_id)
