@@ -17,7 +17,7 @@ python -m venv venv
 
 ### 4. Install Dependencies
 ```
-pip install PyQt6
+pip install -r requirements.txt
 ```
 
 ### 5. Upgrade pip
