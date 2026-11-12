@@ -31,7 +31,5 @@ python main.py
 ```
 
 ## HOW TO LOGIN
-```
-enter username: guest
-enter password: guest123
-```
+- Use any username
+- Doesn't require a password.
