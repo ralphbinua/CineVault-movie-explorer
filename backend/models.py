@@ -34,6 +34,8 @@ class Movie:
             "duration": self.duration,
             "desc": self.description,
             "color": self.poster_color,
+            "poster_url": self.poster_url,
+            "trailer_url": self.trailer_url,
         }
 
 
