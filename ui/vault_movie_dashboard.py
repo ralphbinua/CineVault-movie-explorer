@@ -100,7 +100,7 @@ class VaultMovieDashboard(QMainWindow):
         for i, movie in enumerate(movies):
             is_fav = self.history_service.is_favorite(self.user_id, movie.id)
             card = MovieCard(movie.to_dict(), is_fav=is_fav)
-            card.play_btn.clicked.connect(lambda _, m=movie.to_dict(): self._on_play(m, movie.id))
+            card.play_btn.clicked.connect(lambda _, m=movie.to_dict(), t=movie.id: self._on_play(m, t))
             card.fav_btn.clicked.connect(lambda _, m=movie.to_dict(): self._on_fav(m))
             grid.addWidget(card, i // 4, i % 4)
 
