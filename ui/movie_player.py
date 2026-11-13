@@ -3,7 +3,7 @@ import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSlider, QLabel, QMessageBox
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from PyQt6.QtCore import QUrl, Qt
+from PyQt6.QtCore import QUrl, Qt, QEvent
 from backend.services.playback_service import PlaybackService
 
 
@@ -21,6 +21,10 @@ class MoviePlayer(QWidget):
         self.player.playbackStateChanged.connect(self._on_playback_state)
         self.player.errorOccurred.connect(self._on_error)
         self.setVisible(False)
+        self._is_fullscreen = False
+        self._dashboard_parent = None
+        self._dashboard_layout = None
+        self.video.installEventFilter(self)
 
     def _build(self):
         lay = QVBoxLayout(self)
@@ -93,12 +97,43 @@ class MoviePlayer(QWidget):
         self.mute_btn.setText("Muted" if self.audio_output.isMuted() else "Mute")
 
     def _toggle_fullscreen(self):
-        if self.video.isFullScreen():
-            self.video.setWindowState(Qt.WindowState.WindowNoState)
-            self.video.showNormal()
+        if not self._is_fullscreen:
+            # Save parent and detach from dashboard layout
+            self._dashboard_parent = self.parentWidget()
+            if self._dashboard_parent:
+                self._dashboard_layout = self._dashboard_parent.layout()
+                if self._dashboard_layout:
+                    self._dashboard_layout.removeWidget(self)
+
+            # Reparent to desktop so we become a top-level window
+            self.setParent(None)
+            self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+            self.showNormal()
+            self.show()
+            self.showFullScreen()
+            self._is_fullscreen = True
         else:
-            self.video.setWindowState(Qt.WindowState.WindowFullScreen)
-            self.video.showFullScreen()
+            # Restore to dashboard layout
+            self.showNormal()
+            self.setWindowFlags(Qt.Widget)
+
+            if self._dashboard_parent and self._dashboard_layout:
+                self._dashboard_layout.addWidget(self)
+                self.setParent(self._dashboard_parent)
+                self._dashboard_parent.show()
+
+            self._is_fullscreen = False
+            # Re-establish video output after reparenting
+            self.player.setVideoOutput(self.video)
+            # Re-establish video output after reparenting
+            self.player.setVideoOutput(self.video)
+
+    def eventFilter(self, obj, event):
+        if obj == self.video and event.type() == QEvent.Type.KeyPress:
+            if event.key() == Qt.Key.Key_Escape and self._is_fullscreen:
+                self._toggle_fullscreen()
+                return True
+        return super().eventFilter(obj, event)
 
     def _stop_and_hide(self):
         self.player.stop()
