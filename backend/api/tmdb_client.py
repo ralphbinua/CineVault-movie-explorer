@@ -39,3 +39,37 @@ class TMDbClient:
         if not poster_path:
             return ""
         return f"{self.IMAGE_BASE}{poster_path}"
+
+    def search_movies(self, query: str) -> list[dict]:
+        if not self.api_key:
+            return []
+        try:
+            resp = self.session.get(
+                f"{self.BASE_URL}/search/movie",
+                params={"query": query, "page": 1},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            return resp.json().get("results", [])
+        except Exception:
+            return []
+
+    def genres(self) -> list[str]:
+        if not self.api_key:
+            return []
+        try:
+            resp = self.session.get(f"{self.BASE_URL}/genre/movie/list", timeout=10)
+            resp.raise_for_status()
+            return [g["name"] for g in resp.json().get("genres", [])]
+        except Exception:
+            return []
+
+    def movie_details(self, movie_id: int) -> dict | None:
+        if not self.api_key:
+            return None
+        try:
+            resp = self.session.get(f"{self.BASE_URL}/movie/{movie_id}", timeout=10)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception:
+            return None
