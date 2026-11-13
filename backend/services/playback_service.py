@@ -3,6 +3,8 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
+from pathlib import Path
 import yt_dlp
 from backend.database import Database
 from backend.api.tmdb_client import TMDbClient
@@ -24,16 +26,31 @@ def _find_ffmpeg() -> Optional[str]:
     return None
 
 
+def _cleanup_old_trailes(cache_dir: Path, days: int = 30):
+    """Remove trailer MP4 files older than `days` days."""
+    if not cache_dir.exists():
+        return
+    cutoff = time.time() - (days * 86400)
+    for f in cache_dir.glob("*.mp4"):
+        try:
+            if f.stat().st_mtime < cutoff:
+                f.unlink()
+        except Exception:
+            pass
+
+
 class PlaybackService:
     def __init__(self, db: Database, tmdb: Optional[TMDbClient] = None):
         self.db = db
         self.tmdb = tmdb or TMDbClient()
-        self.cache_dir = os.path.join(tempfile.gettempdir(), "cinevault_trailers")
-        os.makedirs(self.cache_dir, exist_ok=True)
+        # Use app-relative cache instead of OS temp dir (persists across restarts)
+        self.cache_dir = Path("trailers_cache")
+        self.cache_dir.mkdir(exist_ok=True)
+        _cleanup_old_trailes(self.cache_dir, days=30)
         self.ffmpeg_path = _find_ffmpeg()
 
     def _cache_path(self, video_id: str) -> str:
-        return os.path.join(self.cache_dir, f"{video_id}.mp4")
+        return str(self.cache_dir / f"{video_id}.mp4")
 
     def _download_trailer(self, youtube_url: str, video_id: str) -> str:
         """Download YouTube trailer, merge video+audio with ffmpeg if available."""
@@ -135,11 +152,8 @@ class PlaybackService:
                     if local_path and os.path.exists(local_path):
                         return local_path
                 except Exception:
-                    pass  # Fall through to SQLite fallback
+                    pass  # Fall through to empty result
 
-        # Fallback: seeded SQLite trailer URL (direct MP4 or local file)
-        movie = self.db.get_movie(movie_id)
-        if movie and movie.trailer_url:
-            return movie.trailer_url
-
+        # No SQLite fallback — all movie data comes from TMDB API
+        # If no TMDB key or download failed, return empty string
         return ""

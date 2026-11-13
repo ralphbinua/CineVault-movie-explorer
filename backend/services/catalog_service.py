@@ -1,6 +1,8 @@
 """CatalogService — TMDB API exclusively for movie data."""
 from typing import Optional, List
+import json
 import random
+from pathlib import Path
 
 from backend.database import Database
 from backend.models import Movie
@@ -12,14 +14,50 @@ class CatalogService:
         self.db = db
         self.tmdb = tmdb or TMDbClient()
 
+    def _cache_path(self) -> Path:
+        """Return path to movie selection cache file."""
+        return Path("cinevault_selected.json")
+
+    def _load_cached_movies(self) -> List[Movie] | None:
+        """Return cached 12 movies if available and not stale, None otherwise."""
+        cp = self._cache_path()
+        if cp.exists():
+            try:
+                data = json.loads(cp.read_text())
+                movie_ids = data.get("movie_ids", [])
+                if movie_ids:
+                    movies = [self.get_by_id(mid) for mid in movie_ids]
+                    movies = [m for m in movies if m is not None]
+                    if movies:
+                        return movies[:12]
+            except Exception:
+                pass
+        return None
+
+    def _save_cached_movies(self, movies: List[Movie]):
+        """Cache the first 12 movies to disk."""
+        cp = self._cache_path()
+        cp.parent.mkdir(exist_ok=True)
+        cp.write_text(json.dumps({"movie_ids": [m.id for m in movies[:12]]}))
+        # Set modification time to "never stale" — keep forever
+        cp.touch()
+
     def list_all(self) -> List[Movie]:
+        # Try cache first — skip TMDB API on subsequent launches
+        cached = self._load_cached_movies()
+        if cached:
+            return cached
+
+        # Fallback: fetch from TMDB and cache
         all_movies = []
-        for page in range(1, 4):  # pages 1, 2, 3 (TMDB returns 20 per page)
+        for page in range(1, 3):  # pages 1, 2 (TMDB returns 20 per page = 40 total)
             movies = self.tmdb.popular_movies(page=page)
             all_movies.extend(movies)
 
         random.shuffle(all_movies)
-        return [self._tmdb_to_movie(m) for m in all_movies[:12]]
+        selected = [self._tmdb_to_movie(m) for m in all_movies[:12]]
+        self._save_cached_movies(selected)
+        return selected
 
     def search(self, query: str, genre: str = "All") -> List[Movie]:
         if query:

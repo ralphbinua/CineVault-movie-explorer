@@ -6,6 +6,9 @@ from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 
 class MovieCard(QFrame):
+    # Class-level cache: poster_url -> QPixmap (shared across all MovieCard instances)
+    _poster_cache: dict[str, QPixmap] = {}
+
     def __init__(self, movie: dict, is_fav: bool = False, parent=None):
         super().__init__(parent)
         self.movie = movie
@@ -32,15 +35,30 @@ class MovieCard(QFrame):
         self.poster.setMaximumHeight(260)
         layout.addWidget(self.poster)
 
-        # Load poster image from TMDB
+        # Load poster image from TMDB (check cache first)
         poster_url = self.movie.get("poster_url", "")
         if poster_url:
-            self.nam.get(QNetworkRequest(QUrl(poster_url)))
+            # Check class-level cache first
+            if poster_url in MovieCard._poster_cache:
+                pixmap = MovieCard._poster_cache[poster_url]
+                if not pixmap.isNull():
+                    scaled = pixmap.scaled(
+                        210, 260,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    self.poster.setPixmap(scaled)
+                    self.poster.setText("")
+                # Continue to set up buttons below
+            else:
+                # Start network download (cache miss)
+                self.nam.get(QNetworkRequest(QUrl(poster_url)))
         else:
             # Fallback: colored block with title initial
             title = self.movie["title"] if self.movie["title"] else "?"
             self.poster.setText(title[0])
 
+        # Always set up title, meta, desc, and buttons (regardless of cache status)
         title = QLabel(self.movie["title"])
         title.setStyleSheet("font-size: 15px; font-weight: 700;")
         title.setWordWrap(True)
@@ -75,6 +93,8 @@ class MovieCard(QFrame):
         pixmap = QPixmap()
         pixmap.loadFromData(data)
         if not pixmap.isNull():
+            # Store in class-level cache for future MovieCard instances
+            MovieCard._poster_cache[self.movie.get("poster_url", "")] = pixmap
             scaled = pixmap.scaled(
                 210, 260,
                 Qt.AspectRatioMode.KeepAspectRatio,

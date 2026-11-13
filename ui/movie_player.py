@@ -107,7 +107,7 @@ class MoviePlayer(QWidget):
 
             # Reparent to desktop so we become a top-level window
             self.setParent(None)
-            self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+            self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
             self.showNormal()
             self.show()
             self.showFullScreen()
@@ -115,7 +115,6 @@ class MoviePlayer(QWidget):
         else:
             # Restore to dashboard layout
             self.showNormal()
-            self.setWindowFlags(Qt.Widget)
 
             if self._dashboard_parent and self._dashboard_layout:
                 self._dashboard_layout.addWidget(self)

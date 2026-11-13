@@ -5,6 +5,10 @@ from backend.models import Movie, WatchRecord
 from backend.api.tmdb_client import TMDbClient
 
 
+# Cache: movie_id -> Movie, so we don't re-fetch from TMDB on every refresh
+_movie_cache: dict[int, Movie] = {}
+
+
 def _tmdb_to_movie(data: dict) -> Movie:
     return Movie(
         id=data["id"],
@@ -20,6 +24,19 @@ def _tmdb_to_movie(data: dict) -> Movie:
     )
 
 
+def _get_movie_from_tmdb(tmdb: TMDbClient, movie_id: int) -> Movie | None:
+    """Fetch movie from TMDB, using cache if available."""
+    if movie_id in _movie_cache:
+        return _movie_cache[movie_id]
+
+    data = tmdb.movie_details(movie_id)
+    if data:
+        movie = _tmdb_to_movie(data)
+        _movie_cache[movie_id] = movie
+        return movie
+    return None
+
+
 class HistoryService:
     def __init__(self, db: Database, tmdb: Optional[TMDbClient] = None):
         self.db = db
@@ -29,8 +46,7 @@ class HistoryService:
         rows = self.db.get_history(user_id)
         out = []
         for r in rows:
-            data = self.tmdb.movie_details(r.movie_id)
-            movie = _tmdb_to_movie(data) if data else None
+            movie = _get_movie_from_tmdb(self.tmdb, r.movie_id)
             out.append(WatchRecord(id=r.id, user_id=r.user_id, movie_id=r.movie_id, watched_at=r.watched_at, movie=movie))
         return out
 
@@ -38,9 +54,9 @@ class HistoryService:
         movie_ids = self.db.list_favorites(user_id)
         movies = []
         for mid in movie_ids:
-            data = self.tmdb.movie_details(mid)
-            if data:
-                movies.append(_tmdb_to_movie(data))
+            movie = _get_movie_from_tmdb(self.tmdb, mid)
+            if movie is not None:
+                movies.append(movie)
         return movies
 
     def log_watch(self, user_id: int, movie_id: int):
