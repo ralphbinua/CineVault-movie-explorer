@@ -36,8 +36,8 @@ def main():
     db = Database()
     auth = AuthService(db)
     catalog = CatalogService(db)
-    history = HistoryService(db)
     tmdb = TMDbClient()
+    history = HistoryService(db, tmdb)
     playback = PlaybackService(db, tmdb)
 
     while True:
